@@ -243,4 +243,4 @@ The default server URL is `http://localhost:3039` if the environment variable is
 
 ## License
 
-MIT
+Apache-2.0
