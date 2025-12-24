@@ -1,0 +1,45 @@
+{
+  "name": "@gagara/gagara-tsclient",
+  "version": "0.1.0",
+  "description": "TypeScript client for gagara ephemeral data service",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "test:unit": "vitest run test/client.test.ts",
+    "test:e2e": "vitest run test/client.e2e.test.ts",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "gagara",
+    "duckdb",
+    "sql",
+    "data",
+    "analytics"
+  ],
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

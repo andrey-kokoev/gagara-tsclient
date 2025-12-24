@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "gagara-tsclient",
+			"path": "."
+		},
+		{
+			"name": "gagara",
+			"path": "../gagara"
+		},
+		{
+			"name": "courier",
+			"path": "../courier"
+		},
+		{
+			"name": "t895.validator",
+			"path": "../t895.validator"
+		}
+	],
+  "settings": {}
+}
