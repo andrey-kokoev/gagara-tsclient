@@ -21,7 +21,9 @@
     "test:unit": "vitest run test/client.test.ts",
     "test:e2e": "vitest run test/client.e2e.test.ts",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "prepublish": "npm run build",
+    "publish": "npm publish --access public"
   },
   "keywords": [
     "gagara",
