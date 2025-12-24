@@ -1,11 +1,11 @@
-import { Dataset } from './dataset.js';
+import { Dataset } from './dataset.js'
 import type {
   ClientOptions,
   UploadOptions,
   CreateDatasetResponse,
   ErrorResponse,
-} from './types.js';
-import { GagaraError } from './types.js';
+} from './types.js'
+import { GagaraError } from './types.js'
 
 /**
  * Client for the gagara ephemeral data service.
@@ -25,15 +25,17 @@ import { GagaraError } from './types.js';
  * ```
  */
 export class GagaraClient {
-  readonly #baseUrl: string;
-  readonly #fetch: typeof globalThis.fetch;
-  readonly #timeout: number;
+  readonly #baseUrl: string
+  readonly #fetch: typeof globalThis.fetch
+  readonly #timeout: number
+  readonly #serviceToken?: string
 
   constructor(options: ClientOptions) {
     // Strip trailing slash
-    this.#baseUrl = options.baseUrl.replace(/\/$/, '');
-    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
-    this.#timeout = options.timeout ?? 30_000;
+    this.#baseUrl = options.baseUrl.replace(/\/$/, '')
+    this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
+    this.#timeout = options.timeout ?? 30_000
+    this.#serviceToken = options.serviceToken
   }
 
   /**
@@ -57,13 +59,13 @@ export class GagaraClient {
    * const dataset = await client.upload(data, 'my-data', { format: 'parquet' });
    * ```
    */
-  async upload(
+  async upload (
     data: Uint8Array | ArrayBuffer,
     name: string,
     options: UploadOptions = {}
   ): Promise<Dataset> {
-    const format = options.format ?? 'csv';
-    const body = (data instanceof ArrayBuffer ? new Uint8Array(data) : data) as BodyInit;
+    const format = options.format ?? 'csv'
+    const body = (data instanceof ArrayBuffer ? new Uint8Array(data) : data) as BodyInit
 
     const res = await this.#request('/catalog', {
       method: 'POST',
@@ -73,19 +75,25 @@ export class GagaraClient {
         'X-Gagara-Format': format,
       },
       body,
-    });
+    })
 
     if (!res.ok) {
-      const errorBody = await this.#parseError(res);
+      const errorBody = await this.#parseError(res)
       throw new GagaraError(
         errorBody?.error ?? `Upload failed: ${res.status}`,
         res.status,
         errorBody
-      );
+      )
     }
 
-    const result: CreateDatasetResponse = await res.json();
-    return new Dataset(result.token, this.#baseUrl, this.#fetch, this.#timeout);
+    const result: CreateDatasetResponse = await res.json()
+    return new Dataset(
+      result.token,
+      this.#baseUrl,
+      this.#fetch,
+      this.#timeout,
+      this.#serviceToken
+    )
   }
 
   /**
@@ -110,19 +118,25 @@ export class GagaraClient {
    * }
    * ```
    */
-  fromToken(token: string): Dataset {
-    return new Dataset(token, this.#baseUrl, this.#fetch, this.#timeout);
+  fromToken (token: string): Dataset {
+    return new Dataset(
+      token,
+      this.#baseUrl,
+      this.#fetch,
+      this.#timeout,
+      this.#serviceToken
+    )
   }
 
   /**
    * Health check - verify the gagara server is reachable.
    */
-  async health(): Promise<boolean> {
+  async health (): Promise<boolean> {
     try {
-      const res = await this.#request('/health');
-      return res.ok;
+      const res = await this.#request('/health')
+      return res.ok
     } catch {
-      return false;
+      return false
     }
   }
 
@@ -130,25 +144,31 @@ export class GagaraClient {
   // Internal
   // ----------------------------------------------------------
 
-  async #request(path: string, init?: RequestInit): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.#timeout);
+  async #request (path: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.#timeout)
 
     try {
+      const headers = new Headers(init?.headers ?? {})
+      if (this.#serviceToken && !headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${this.#serviceToken}`)
+      }
+
       return await this.#fetch(`${this.#baseUrl}${path}`, {
         ...init,
+        headers,
         signal: controller.signal,
-      });
+      })
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
     }
   }
 
-  async #parseError(res: Response): Promise<ErrorResponse | undefined> {
+  async #parseError (res: Response): Promise<ErrorResponse | undefined> {
     try {
-      return await res.json();
+      return await res.json()
     } catch {
-      return undefined;
+      return undefined
     }
   }
 }

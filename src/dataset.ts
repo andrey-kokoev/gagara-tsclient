@@ -3,28 +3,31 @@ import type {
   MetaResponse,
   QueryResponse,
   ErrorResponse,
-} from './types.js';
-import { GagaraError, DatasetNotFoundError, QueryError } from './types.js';
+} from './types.js'
+import { GagaraError, DatasetNotFoundError, QueryError } from './types.js'
 
 /**
  * Handle to an uploaded dataset. Carries the token and provides
  * methods for querying, introspection, and lifecycle management.
  */
 export class Dataset {
-  readonly #baseUrl: string;
-  readonly #fetch: typeof globalThis.fetch;
-  readonly #timeout: number;
+  readonly #baseUrl: string
+  readonly #fetch: typeof globalThis.fetch
+  readonly #timeout: number
+  readonly #serviceToken?: string
 
   constructor(
     /** Capability token for this dataset */
     public readonly token: string,
     baseUrl: string,
     fetchFn: typeof globalThis.fetch,
-    timeout: number
+    timeout: number,
+    serviceToken?: string
   ) {
-    this.#baseUrl = baseUrl;
-    this.#fetch = fetchFn;
-    this.#timeout = timeout;
+    this.#baseUrl = baseUrl
+    this.#fetch = fetchFn
+    this.#timeout = timeout
+    this.#serviceToken = serviceToken
   }
 
   // ----------------------------------------------------------
@@ -40,52 +43,66 @@ export class Dataset {
    *   'SELECT name, COUNT(*) as count FROM dataset GROUP BY name'
    * );
    */
-  async query<T = Record<string, unknown>>(sql: string): Promise<T[]> {
+  async query<T = Record<string, unknown>> (sql: string): Promise<T[]> {
+    const authHeader = this.#serviceToken
+      ? `Bearer ${this.#serviceToken}`
+      : `Bearer ${this.token}`
+
     const res = await this.#request('/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
+        Authorization: authHeader,
       },
-      body: JSON.stringify({ sql }),
-    });
+      body: JSON.stringify({
+        sql,
+        token: this.#serviceToken ? this.token : undefined,
+      }),
+    })
 
     if (!res.ok) {
-      const body = await this.#parseError(res);
+      const body = await this.#parseError(res)
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new QueryError(body?.error ?? 'Query failed', body);
+      throw new QueryError(body?.error ?? 'Query failed', body)
     }
 
-    const data: QueryResponse<T> = await res.json();
-    return data.rows;
+    const data: QueryResponse<T> = await res.json()
+    return data.rows
   }
 
   /**
    * Execute a query and return full response including column names.
    */
-  async queryFull<T = Record<string, unknown>>(
+  async queryFull<T = Record<string, unknown>> (
     sql: string
   ): Promise<QueryResponse<T>> {
+    const authHeader = this.#serviceToken
+      ? `Bearer ${this.#serviceToken}`
+      : `Bearer ${this.token}`
+
     const res = await this.#request('/query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
+        Authorization: authHeader,
       },
-      body: JSON.stringify({ sql }),
-    });
+      body: JSON.stringify({
+        sql,
+        token: this.#serviceToken ? this.token : undefined,
+      }),
+    })
 
     if (!res.ok) {
-      const body = await this.#parseError(res);
+      const body = await this.#parseError(res)
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new QueryError(body?.error ?? 'Query failed', body);
+      throw new QueryError(body?.error ?? 'Query failed', body)
     }
 
-    return res.json();
+    return res.json()
   }
 
   // ----------------------------------------------------------
@@ -95,49 +112,49 @@ export class Dataset {
   /**
    * Get column schema (names, types, nullability).
    */
-  async schema(): Promise<SchemaColumn[]> {
-    const res = await this.#request(`/catalog/${this.token}/schema`);
+  async schema (): Promise<SchemaColumn[]> {
+    const res = await this.#request(`/catalog/${this.token}/schema`)
 
     if (!res.ok) {
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new GagaraError('Failed to get schema', res.status);
+      throw new GagaraError('Failed to get schema', res.status)
     }
 
-    const data = await res.json();
-    return data.columns;
+    const data = await res.json()
+    return data.columns
   }
 
   /**
    * Get dataset metadata: row count, file size, column sizes.
    */
-  async meta(): Promise<MetaResponse> {
-    const res = await this.#request(`/catalog/${this.token}/meta`);
+  async meta (): Promise<MetaResponse> {
+    const res = await this.#request(`/catalog/${this.token}/meta`)
 
     if (!res.ok) {
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new GagaraError('Failed to get metadata', res.status);
+      throw new GagaraError('Failed to get metadata', res.status)
     }
 
-    return res.json();
+    return res.json()
   }
 
   /**
    * Check if this dataset still exists on the server.
    * Useful for long-lived tokens across server restarts.
    */
-  async isPresent(): Promise<boolean> {
-    const res = await this.#request(`/catalog/${this.token}/is-present`);
+  async isPresent (): Promise<boolean> {
+    const res = await this.#request(`/catalog/${this.token}/is-present`)
 
     if (!res.ok) {
-      throw new GagaraError('Failed to check presence', res.status);
+      throw new GagaraError('Failed to check presence', res.status)
     }
 
-    const data = await res.json();
-    return data.isPresent;
+    const data = await res.json()
+    return data.isPresent
   }
 
   // ----------------------------------------------------------
@@ -147,18 +164,18 @@ export class Dataset {
   /**
    * Rename this dataset (updates friendly name only).
    */
-  async rename(newName: string): Promise<void> {
+  async rename (newName: string): Promise<void> {
     const res = await this.#request(`/catalog/${this.token}/rename`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ new_name: newName }),
-    });
+    })
 
     if (!res.ok) {
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new GagaraError('Failed to rename', res.status);
+      throw new GagaraError('Failed to rename', res.status)
     }
   }
 
@@ -166,16 +183,16 @@ export class Dataset {
    * Delete this dataset from the server.
    * The Dataset object becomes unusable after this.
    */
-  async delete(): Promise<void> {
+  async delete (): Promise<void> {
     const res = await this.#request(`/catalog/${this.token}`, {
       method: 'DELETE',
-    });
+    })
 
     if (!res.ok) {
       if (res.status === 404) {
-        throw new DatasetNotFoundError(this.token);
+        throw new DatasetNotFoundError(this.token)
       }
-      throw new GagaraError('Failed to delete', res.status);
+      throw new GagaraError('Failed to delete', res.status)
     }
   }
 
@@ -183,25 +200,35 @@ export class Dataset {
   // Internal
   // ----------------------------------------------------------
 
-  async #request(path: string, init?: RequestInit): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.#timeout);
+  async #request (path: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.#timeout)
 
     try {
+      const headers = new Headers(init?.headers ?? {})
+      const authHeader = this.#serviceToken
+        ? `Bearer ${this.#serviceToken}`
+        : `Bearer ${this.token}`
+
+      if (!headers.has('Authorization')) {
+        headers.set('Authorization', authHeader)
+      }
+
       return await this.#fetch(`${this.#baseUrl}${path}`, {
         ...init,
+        headers,
         signal: controller.signal,
-      });
+      })
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
     }
   }
 
-  async #parseError(res: Response): Promise<ErrorResponse | undefined> {
+  async #parseError (res: Response): Promise<ErrorResponse | undefined> {
     try {
-      return await res.json();
+      return await res.json()
     } catch {
-      return undefined;
+      return undefined
     }
   }
 }
