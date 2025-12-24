@@ -1,6 +1,6 @@
 {
   "name": "@gagara/gagara-tsclient",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "TypeScript client for gagara ephemeral data service",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -22,8 +22,7 @@
     "test:e2e": "vitest run test/client.e2e.test.ts",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "prepublish": "npm run build",
-    "publish": "npm publish --access public"
+    "prepublish": "npm run build"
   },
   "keywords": [
     "gagara",
