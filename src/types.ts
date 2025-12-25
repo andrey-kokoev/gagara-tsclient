@@ -58,6 +58,9 @@ export interface ClientOptions {
   /** Service token for Authorization header */
   serviceToken?: string
 
+  /** User token for Authorization header */
+  token?: string
+
   /** Custom fetch implementation (for Node.js <18 or testing) */
   fetch?: typeof globalThis.fetch
 

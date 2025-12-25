@@ -29,6 +29,7 @@ export class GagaraClient {
   readonly #fetch: typeof globalThis.fetch
   readonly #timeout: number
   readonly #serviceToken?: string
+  readonly #token?: string
 
   constructor(options: ClientOptions) {
     // Strip trailing slash
@@ -36,6 +37,7 @@ export class GagaraClient {
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
     this.#timeout = options.timeout ?? 30_000
     this.#serviceToken = options.serviceToken
+    this.#token = options.token
   }
 
   /**
@@ -150,8 +152,9 @@ export class GagaraClient {
 
     try {
       const headers = new Headers(init?.headers ?? {})
-      if (this.#serviceToken && !headers.has('Authorization')) {
-        headers.set('Authorization', `Bearer ${this.#serviceToken}`)
+      const authToken = this.#token ?? this.#serviceToken
+      if (authToken && !headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${authToken}`)
       }
 
       return await this.#fetch(`${this.#baseUrl}${path}`, {
